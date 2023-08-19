@@ -9,7 +9,7 @@ from fastapi import FastAPI, Form, Request
 from fastapi.responses import StreamingResponse
 import openpyxl
 import json
-
+from fractions import Fraction
 app = FastAPI()
 templates = Jinja2Templates(directory="templates")
 templates.env.globals.update(enumerate=enumerate)
@@ -37,6 +37,65 @@ async def render_upload_form(request: Request):
 #
 #     # 메모리에 생성된 엑셀 파일을 스트리밍하여 사용자에게 전송
 #     return FileResponse("교원.xlsx", media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", filename="output.xlsx")
+
+
+def wat_resize(wat):
+    패턴 = r"(\d+)/(\d+)"
+    매치 = re.search(패턴, wat)
+    pp = r'\b(\d+)\s*w\b'
+    pattern = r'\b(\d+)\s*(?:밀리와트|mW|mw)\b'
+    matcheses = re.findall(pattern, wat, re.IGNORECASE)
+
+    패턴즈 = r"kw"
+    매치들 = re.findall(패턴즈, wat, re.IGNORECASE)
+    if 매치들:
+        if 매치:
+            분자 = int(매치.group(1))
+            분모 = int(매치.group(2))
+            소수 = 분자 / 분모
+            결과_문자열 = float(소수)
+
+            print(결과_문자열)
+            return 결과_문자열
+
+        else:
+            패턴 = r"\d+"
+            추출된_숫자들 = re.findall(패턴, wat, re.IGNORECASE)
+            return float(추출된_숫자들[0])
+
+
+    와트매치=re.findall(pp, wat, re.IGNORECASE)
+    if 와트매치:
+        print(wat,"@@)")
+        if 매치:
+            분자 = int(매치.group(1))
+            분모 = int(매치.group(2))
+            소수 = 분자 / 분모
+            결과_문자열 = float(소수)
+
+            print(결과_문자열)
+            return 결과_문자열*0.001
+
+        else:
+            패턴 = r"\d+"
+            추출된_숫자들 = re.findall(패턴, wat, re.IGNORECASE)
+            return 추출된_숫자들[0]*0.001
+    if not 매치들 and not 와트매치:
+        print("@@@@",matcheses[0])
+        if 매치:
+            분자 = int(매치.group(1))
+            분모 = int(매치.group(2))
+            소수 = 분자 / 분모
+            결과_문자열 = float(소수)
+
+            print(결과_문자열)
+            return 결과_문자열*0.000001
+
+        else:
+            패턴 = r"\d+"
+            추출된_숫자들 = re.findall(패턴, wat, re.IGNORECASE)
+            return 추출된_숫자들[0]*0.000001
+
 
 
 @app.post("/send-list/")
@@ -160,11 +219,11 @@ async def send_list(request: Request, selected_columns: str = Form(...),content_
                             if match:
                                 voltage_number = 2
                                 matches_data = re.findall(pattern_v, voltage_value)
-                                result_data[k].append(int(matches_data[0]))
+                                result_data[k].append(float(matches_data[0]))
                             if matches:
                                 voltage_number = 2
                                 matches_num = re.findall(patternv, voltage_value, re.IGNORECASE)
-                                result_data[k].append(int(matches_num[0]) * 1000)
+                                result_data[k].append(float(matches_num[0]) * 1000)
 
                     break
 
@@ -176,7 +235,7 @@ async def send_list(request: Request, selected_columns: str = Form(...),content_
             for row in result_data:
                 if len(row) < max_columns:
                     row.append("None")
-            list_table_number.append("VOLTAGE")
+            list_table_number.append("uvi")
 
 
         for i in range(len(list_row)):
@@ -192,8 +251,16 @@ async def send_list(request: Request, selected_columns: str = Form(...),content_
                         combined_result = " ".join(combined_values)
                         wat = combined_result
                         for k in range(len(result_data)):
+                            patternkw = r"(\w+)\d*KW"
+                            patternrw = r"(\w+)\d*W"
+                            matchkw = re.search(patternkw, wat, re.IGNORECASE)
+                            matchw=re.search(patternrw, wat, re.IGNORECASE)
+                            numfrac = r"\d+/\d+"
+
                             if result_data[k][0] == list_row[i]:
-                                result_data[k].append(wat)
+                                a=wat_resize(wat)
+                                result_data[k].append(a)
+
                         break
                     else:
                         wat = ""
@@ -249,7 +316,17 @@ async def send_list(request: Request, selected_columns: str = Form(...),content_
                         resistance_value = matchnorm.group(0)
                         for k in range(len(result_data)):
                             if result_data[k][0] == list_row[i]:
-                                result_data[k].append(resistance_value)
+                                pattern = r"(\d+)Ω"
+                                match = re.search(pattern, resistance_value)
+                                if re.search(pattern, resistance_value):
+                                    numberingnorm = int(match.group(1))
+                                    convert_norm = numberingnorm * 0.001
+                                    result_data[k].append(convert_norm)
+                                else:
+                                    numming = r"\d+"
+                                    filteringnum = re.findall(numming, resistance_value)
+                                    result_data[k].append(int(filteringnum[0]))
+
                         break
                     else:
                         resistance_value = ""
